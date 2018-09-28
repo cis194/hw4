@@ -1,9 +1,10 @@
 {-# LANGUAGE InstanceSigs #-}
+{-# OPTIONS -Wall -Wno-missing-methods #-}
 
 module HW4 where
 
-import Data.Monoid hiding (All, Any, (<>))
-import Data.Semigroup hiding (All, Any)
+import Data.Monoid (Monoid)
+import Data.Semigroup (Semigroup, (<>))
 
 
 
@@ -225,9 +226,9 @@ instance Num MyInt where
 
   fromInteger :: Integer -> MyInt
   fromInteger 0 = Zero
-  fromInteger n
-    | n > 0     = Pos . toTallyMark $ n
-    | otherwise = Neg . toTallyMark . abs $ n
+  fromInteger int
+    | int > 0   = Pos . toTallyMark $ int
+    | otherwise = Neg . toTallyMark . abs $ int
     where
       toTallyMark 1 = One
       toTallyMark n = OnePlus . toTallyMark $ n - 1
