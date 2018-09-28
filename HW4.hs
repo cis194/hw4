@@ -1,7 +1,9 @@
+{-# LANGUAGE InstanceSigs #-}
+
 module HW4 where
 
-import Data.Semigroup hiding (All, Any)
 import Data.Monoid hiding (All, Any, (<>))
+import Data.Semigroup hiding (All, Any)
 
 
 
@@ -50,6 +52,7 @@ We filled in the first case to get you started.
 -}
 
 instance Semigroup Color where
+  (<>) :: Color -> Color -> Color
   Red <> Blue = Purple
   _   <> _    = undefined
 
@@ -81,6 +84,7 @@ this instance to the one that deriving Show would give you.
 -}
 
 instance Show TallyMark where
+  show :: TallyMark -> String
   show One = "|"
   show (OnePlus One) = "||"
   show (OnePlus (OnePlus One)) = "|||"
@@ -114,13 +118,20 @@ negativeOne = Neg One
 {-
 We are now going to write instances of some common typeclasses for MyInt.
 
-The first one is Show, which we give you at no cost.
+The first one is Show, which we give you at no cost. Recall that although
+we are calling show in the definition of show, this definition is not
+actually recursive since they are different shows! The show that we are
+calling in the definition is for the TallyMark type. To help you remember
+that, we added a type annotation to n. (Yes, you can put annotations
+smack in the middle of an expression.) This annotation is not necessary,
+but it does help the reader disambiguate the show we are calling.
 -}
 
 instance Show MyInt where
-  show (Neg n) = "- " ++ show n
+  show :: MyInt -> String
+  show (Neg n) = "- " ++ show (n :: TallyMark)
   show Zero    = "z"
-  show (Pos n) = "+ " ++ show n
+  show (Pos n) = "+ " ++ show (n :: TallyMark)
 
 {-
 You will now write an Ord instance for MyInt. Why not derive it you ask?
@@ -128,6 +139,7 @@ Try it out and see what happens when you compare two negative numbers.
 -}
 
 instance Ord MyInt where
+  compare :: MyInt -> MyInt -> Ordering
   compare = undefined
 
 
@@ -181,10 +193,9 @@ which is also not representable as a TallyMark.
     tallyMarkMinus (OnePlus One) (OnePlus One) == Zero
     tallyMarkMinus (OnePlus One) (OnePlus . OnePlus $ One) == Neg One
 -}
+
 tallyMarkMinus :: TallyMark -> TallyMark -> MyInt
 tallyMarkMinus = undefined
-
-
 
 {-
 And now the moment you've been waiting for...
@@ -197,16 +208,22 @@ look back at the tallyMark* functions you defined above.
 -}
 
 instance Num MyInt where
+  (+) :: MyInt -> MyInt -> MyInt
   (+) = undefined
 
+  (*) :: MyInt -> MyInt -> MyInt
   (*) = undefined
 
+  abs :: MyInt -> MyInt
   abs = undefined
 
+  signum :: MyInt -> MyInt
   signum = undefined
 
+  negate :: MyInt -> MyInt
   negate = undefined
 
+  fromInteger :: Integer -> MyInt
   fromInteger 0 = Zero
   fromInteger n
     | n > 0     = Pos . toTallyMark $ n
@@ -224,15 +241,23 @@ Suppose we try to write a Monoid instance for Bool.
 
 We come up with
 
+    instance Semigroup Bool where
+      (<>) :: Bool -> Bool -> Bool
+      (<>) = (&&)
+
     instance Monoid Bool where
+      mempty :: Bool
       mempty = True
-      mappend = (&&)
 
 while our friend comes up with
 
+    instance Semigroup Bool where
+      (<>) :: Bool -> Bool -> Bool
+      (<>) = (||)
+
     instance Monoid Bool where
+      mempty :: Bool
       mempty = False
-      mappend = (||)
 
 Which is the correct Monoid instance for Bool? Turns out they are both
 correct! How can we have two Monoid instances of the same type though?!
@@ -245,6 +270,17 @@ and that constructor must take a single argument. The advantage is that
 newtype is more performant. It allows the compiler to eliminate all the
 wrapping and unwrapping once the code is typechecked. If you find this
 paragraph confusing, just mentally replace newtype with data.
+
+The other interesting thing to note is that we cannot write a Monoid
+instance without a corresponding Semigroup instance as of GHC 8.4
+(which is what most of you are using). If we think about it, this
+actually makes sense. All Monoids have an identity element, mempty,
+and a binary merge operation, mappend, while for a Semigroup instance
+you only need a binary merge operation, namely (<>). Looking at the
+Haskell docs, we can also check that mappend and (<>) follow the same
+laws and learn that mappend and (<>) should be functionally equivalent.
+One plus that we get from this is that we do not need to define mappend.
+The compiler will just use the default definition: mappend = (<>).
 -}
 
 newtype All
@@ -255,42 +291,61 @@ newtype Any
   = Any Bool
   deriving (Eq, Ord, Show)
 
+instance Semigroup All where
+  (<>) :: All -> All -> All
+  All b <> All c = All $ b && c
+
 instance Monoid All where
+  mempty :: All
   mempty = All True
-  mappend (All b) (All c) = All $ b && c
+
+instance Semigroup Any where
+  (<>) :: Any -> Any -> Any
+  Any b <> Any c = Any $ b || c
 
 instance Monoid Any where
+  mempty :: Any
   mempty = Any False
-  mappend (Any b) (Any c) = Any $ b || c
 
 {-
-Based off the above example, write two instances of Monoid for MyInt.
-Use (+) for MySum and (*) for MyProduct.
+Based off the above example, write two instances of Monoid for MyInt
+using the wrapped types MySum and MyProduct to avoid overlapping instances.
 -}
 
 newtype MySum
   = MySum MyInt
   deriving (Eq, Ord, Show)
 
-
 newtype MyProduct
   = MyProduct MyInt
   deriving (Eq, Ord, Show)
 
 {-
+Write the Semigroup and Monoid instances for MySum.
+
     MySum (Pos . OnePlus . OnePlus $ One) `mappend` MySum (Pos . OnePlus $ One)
       == MySum (Pos . OnePlus . OnePlus . OnePlus . OnePlus $ One)
 -}
 
+instance Semigroup MySum where
+  (<>) :: MySum -> MySum -> MySum
+  _ <> _ = undefined
+
 instance Monoid MySum where
+  mempty :: MySum
   mempty = undefined
-  mappend = undefined
 
 
 {-
+Write the Semigroup and Monoid instances for MyProduct.
+
     MyProduct (Pos . OnePlus $ One) `mappend` MyProduct Zero == MyProduct Zero
 -}
 
+instance Semigroup MyProduct where
+  (<>) :: MyProduct -> MyProduct -> MyProduct
+  _ <> _ = undefined
+
 instance Monoid MyProduct where
+  mempty :: MyProduct
   mempty = undefined
-  mappend = undefined
